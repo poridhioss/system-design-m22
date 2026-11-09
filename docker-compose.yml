@@ -1,0 +1,74 @@
+services:
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      retries: 10
+
+  api:
+    build: .
+    command: node src/api.js
+    init: true
+    ports:
+      - "8221:3000"
+    environment:
+      REDIS_URL: redis://redis:6379
+    volumes:
+      - ./src:/app/src
+      - ./scripts:/app/scripts
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  worker-1:
+    build: .
+    command: node src/worker.js
+    init: true
+    restart: unless-stopped
+    environment:
+      REDIS_URL: redis://redis:6379
+      WORKER_ID: worker-1
+      FAIL_RATE: ${FAIL_RATE:-0}
+      CRASH_POINT: ${CRASH_POINT:-none}
+      CRASH_RATE: ${CRASH_RATE:-0}
+    volumes:
+      - ./src:/app/src
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  worker-2:
+    build: .
+    command: node src/worker.js
+    init: true
+    restart: unless-stopped
+    environment:
+      REDIS_URL: redis://redis:6379
+      WORKER_ID: worker-2
+      FAIL_RATE: ${FAIL_RATE:-0}
+      CRASH_POINT: ${CRASH_POINT:-none}
+      CRASH_RATE: ${CRASH_RATE:-0}
+    volumes:
+      - ./src:/app/src
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  worker-3:
+    build: .
+    command: node src/worker.js
+    init: true
+    restart: unless-stopped
+    environment:
+      REDIS_URL: redis://redis:6379
+      WORKER_ID: worker-3
+      FAIL_RATE: ${FAIL_RATE:-0}
+      CRASH_POINT: ${CRASH_POINT:-none}
+      CRASH_RATE: ${CRASH_RATE:-0}
+    volumes:
+      - ./src:/app/src
+    depends_on:
+      redis:
+        condition: service_healthy
