@@ -1,22 +1,25 @@
-// src/api.js: add jobs, look at jobs and stats, and move due retries back to the queue
+// src/api.js: add jobs with a priority and a tenant, show stats, move due retries
 const express = require("express");
 const queue = require("./queue");
-const { getBalance } = require("./handlers");
 
 const app = express();
 app.use(express.json());
 
 app.get("/health", (req, res) => res.json({ status: "ok" }));
 
-// Add a job. Send an Idempotency-Key header to make retries of this request safe.
 app.post("/jobs", async (req, res) => {
-  const { type, payload = {}, maxAttempts = 5 } = req.body || {};
+  const { type, payload = {}, maxAttempts = 5, priority = "normal", tenant = "default" } = req.body || {};
   if (typeof type !== "string" || type === "") {
     return res.status(400).json({ error: "type is required" });
+  }
+  if (!queue.LANES.includes(priority)) {
+    return res.status(400).json({ error: `priority must be one of: ${queue.LANES.join(", ")}` });
   }
   const result = await queue.enqueue({
     type,
     payload,
+    priority,
+    tenant: String(tenant),
     maxAttempts: Number(maxAttempts),
     idempotencyKey: req.get("Idempotency-Key"),
   });
@@ -31,11 +34,6 @@ app.get("/jobs/:id", async (req, res) => {
 
 app.get("/stats", async (req, res) => res.json(await queue.stats()));
 
-app.get("/accounts/:account", async (req, res) => {
-  res.json({ account: req.params.account, balance: await getBalance(req.params.account) });
-});
-
-// The retry mover: every half second, move retries whose wait is over back to q:ready.
 setInterval(() => {
   queue.moveDueJobs().catch((err) => console.error("[mover]", err.message));
 }, 500);

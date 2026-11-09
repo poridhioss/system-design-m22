@@ -12,7 +12,7 @@ services:
     command: node src/api.js
     init: true
     ports:
-      - "8221:3000"
+      - "8222:3000"
     environment:
       REDIS_URL: redis://redis:6379
     volumes:
@@ -30,9 +30,8 @@ services:
     environment:
       REDIS_URL: redis://redis:6379
       WORKER_ID: worker-1
-      FAIL_RATE: ${FAIL_RATE:-0}
-      CRASH_POINT: ${CRASH_POINT:-none}
-      CRASH_RATE: ${CRASH_RATE:-0}
+      LANE_RULE: ${LANE_RULE:-weighted}
+      TENANT_RULE: ${TENANT_RULE:-take-turns}
     volumes:
       - ./src:/app/src
     depends_on:
@@ -47,9 +46,8 @@ services:
     environment:
       REDIS_URL: redis://redis:6379
       WORKER_ID: worker-2
-      FAIL_RATE: ${FAIL_RATE:-0}
-      CRASH_POINT: ${CRASH_POINT:-none}
-      CRASH_RATE: ${CRASH_RATE:-0}
+      LANE_RULE: ${LANE_RULE:-weighted}
+      TENANT_RULE: ${TENANT_RULE:-take-turns}
     volumes:
       - ./src:/app/src
     depends_on:
@@ -64,9 +62,8 @@ services:
     environment:
       REDIS_URL: redis://redis:6379
       WORKER_ID: worker-3
-      FAIL_RATE: ${FAIL_RATE:-0}
-      CRASH_POINT: ${CRASH_POINT:-none}
-      CRASH_RATE: ${CRASH_RATE:-0}
+      LANE_RULE: ${LANE_RULE:-weighted}
+      TENANT_RULE: ${TENANT_RULE:-take-turns}
     volumes:
       - ./src:/app/src
     depends_on:
