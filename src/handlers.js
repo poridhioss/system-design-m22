@@ -28,6 +28,12 @@ const handlers = {
     maybeCrash("after_effect", job);
   },
 
+  // A scheduled job sent by the cron replicas.
+  async report(job) {
+    await sleep(100); // pretend to build the report
+    console.log(`[${WORKER_ID}] built ${job.payload.report} for tick ${job.payload.scheduledFor.slice(11, 19)}`);
+  },
+
   async poison() {
     throw new Error("this job can never succeed");
   },
@@ -39,7 +45,6 @@ async function runJob(job) {
   await handler(job);
 }
 
-// Read an account balance. Works for both versions of the credit handler (see Step 14).
 async function getBalance(account) {
   const credits = await redis.hvals(`account:${account}:credits`);
   if (credits.length > 0) return credits.reduce((sum, value) => sum + Number(value), 0);

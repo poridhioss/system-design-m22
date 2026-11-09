@@ -7,12 +7,25 @@ services:
       interval: 2s
       retries: 10
 
+  etcd:
+    image: quay.io/coreos/etcd:v3.5.17
+    command:
+      - etcd
+      - --name=etcd
+      - --data-dir=/etcd-data
+      - --listen-client-urls=http://0.0.0.0:2379
+      - --advertise-client-urls=http://etcd:2379
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health"]
+      interval: 2s
+      retries: 10
+
   api:
     build: .
     command: node src/api.js
     init: true
     ports:
-      - "8222:3000"
+      - "8223:3000"
     environment:
       REDIS_URL: redis://redis:6379
     volumes:
@@ -30,42 +43,65 @@ services:
     environment:
       REDIS_URL: redis://redis:6379
       WORKER_ID: worker-1
-      LANE_RULE: ${LANE_RULE:-weighted}
-      TENANT_RULE: ${TENANT_RULE:-take-turns}
     volumes:
       - ./src:/app/src
     depends_on:
       redis:
         condition: service_healthy
 
-  worker-2:
+  cron-1:
     build: .
-    command: node src/worker.js
+    command: node src/cron.js
     init: true
     restart: unless-stopped
     environment:
-      REDIS_URL: redis://redis:6379
-      WORKER_ID: worker-2
-      LANE_RULE: ${LANE_RULE:-weighted}
-      TENANT_RULE: ${TENANT_RULE:-take-turns}
+      CRON_ID: cron-1
+      API_URL: http://api:3000
+      ETCD_URL: http://etcd:2379
+      USE_KEY: ${USE_KEY:-true}
+      USE_LEADER: ${USE_LEADER:-true}
     volumes:
       - ./src:/app/src
     depends_on:
-      redis:
+      etcd:
         condition: service_healthy
+      api:
+        condition: service_started
 
-  worker-3:
+  cron-2:
     build: .
-    command: node src/worker.js
+    command: node src/cron.js
     init: true
     restart: unless-stopped
     environment:
-      REDIS_URL: redis://redis:6379
-      WORKER_ID: worker-3
-      LANE_RULE: ${LANE_RULE:-weighted}
-      TENANT_RULE: ${TENANT_RULE:-take-turns}
+      CRON_ID: cron-2
+      API_URL: http://api:3000
+      ETCD_URL: http://etcd:2379
+      USE_KEY: ${USE_KEY:-true}
+      USE_LEADER: ${USE_LEADER:-true}
     volumes:
       - ./src:/app/src
     depends_on:
-      redis:
+      etcd:
         condition: service_healthy
+      api:
+        condition: service_started
+
+  cron-3:
+    build: .
+    command: node src/cron.js
+    init: true
+    restart: unless-stopped
+    environment:
+      CRON_ID: cron-3
+      API_URL: http://api:3000
+      ETCD_URL: http://etcd:2379
+      USE_KEY: ${USE_KEY:-true}
+      USE_LEADER: ${USE_LEADER:-true}
+    volumes:
+      - ./src:/app/src
+    depends_on:
+      etcd:
+        condition: service_healthy
+      api:
+        condition: service_started
