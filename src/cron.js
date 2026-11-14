@@ -52,15 +52,22 @@ async function onTick() {
 // ---------- leader election ----------
 
 function runForLeader(election) {
-  campaign = election.campaign(CRON_ID);
+  const myCampaign = election.campaign(CRON_ID);
+  campaign = myCampaign;
+  let lost = false;
 
-  campaign.on("elected", () => {
+  myCampaign.on("elected", () => {
+    if (lost) return;
     isLeader = true;
     log("I am the leader now");
   });
 
   // Called when this replica loses its lease (it froze, or lost contact with etcd).
-  campaign.on("error", (err) => {
+  myCampaign.on("error", (err) => {
+    // One lost lease can be reported more than once. React only the first time,
+    // otherwise this replica would start two new campaigns.
+    if (lost) return;
+    lost = true;
     isLeader = false;
     log(`lost leadership (${err.message}), running again in 2 s`);
     setTimeout(() => runForLeader(election), 2000);
