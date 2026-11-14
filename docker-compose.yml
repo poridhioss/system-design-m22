@@ -25,7 +25,7 @@ services:
     command: node src/api.js
     init: true
     ports:
-      - "8223:3000"
+      - "8224:3000"
     environment:
       REDIS_URL: redis://redis:6379
     volumes:
@@ -43,6 +43,37 @@ services:
     environment:
       REDIS_URL: redis://redis:6379
       WORKER_ID: worker-1
+      FAIL_RATE: ${FAIL_RATE:-0}
+    volumes:
+      - ./src:/app/src
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  worker-2:
+    build: .
+    command: node src/worker.js
+    init: true
+    restart: unless-stopped
+    environment:
+      REDIS_URL: redis://redis:6379
+      WORKER_ID: worker-2
+      FAIL_RATE: ${FAIL_RATE:-0}
+    volumes:
+      - ./src:/app/src
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  worker-3:
+    build: .
+    command: node src/worker.js
+    init: true
+    restart: unless-stopped
+    environment:
+      REDIS_URL: redis://redis:6379
+      WORKER_ID: worker-3
+      FAIL_RATE: ${FAIL_RATE:-0}
     volumes:
       - ./src:/app/src
     depends_on:
@@ -58,8 +89,6 @@ services:
       CRON_ID: cron-1
       API_URL: http://api:3000
       ETCD_URL: http://etcd:2379
-      USE_KEY: ${USE_KEY:-true}
-      USE_LEADER: ${USE_LEADER:-true}
     volumes:
       - ./src:/app/src
     depends_on:
@@ -77,8 +106,6 @@ services:
       CRON_ID: cron-2
       API_URL: http://api:3000
       ETCD_URL: http://etcd:2379
-      USE_KEY: ${USE_KEY:-true}
-      USE_LEADER: ${USE_LEADER:-true}
     volumes:
       - ./src:/app/src
     depends_on:
@@ -96,8 +123,6 @@ services:
       CRON_ID: cron-3
       API_URL: http://api:3000
       ETCD_URL: http://etcd:2379
-      USE_KEY: ${USE_KEY:-true}
-      USE_LEADER: ${USE_LEADER:-true}
     volumes:
       - ./src:/app/src
     depends_on:
@@ -105,3 +130,27 @@ services:
         condition: service_healthy
       api:
         condition: service_started
+
+  monitor:
+    build: .
+    command: node src/monitor.js
+    init: true
+    restart: unless-stopped
+    environment:
+      REDIS_URL: redis://redis:6379
+      ALARM_URL: http://alarm-sink:4000/alarm
+    volumes:
+      - ./src:/app/src
+    depends_on:
+      redis:
+        condition: service_healthy
+      alarm-sink:
+        condition: service_started
+
+  alarm-sink:
+    build: .
+    command: node src/alarm-sink.js
+    init: true
+    restart: unless-stopped
+    volumes:
+      - ./src:/app/src
